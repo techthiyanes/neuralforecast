@@ -30,6 +30,7 @@ class BaseDataset(Dataset):
                  input_size: int = None,
                  output_size: int = None,
                  complete_windows: bool = True,
+                 normalizer = None,
                  verbose: bool = False) -> 'BaseDataset':
         """
         Parameters
@@ -386,6 +387,7 @@ class TimeSeriesDataset(BaseDataset):
                  ds_in_test: int = 0,
                  is_test: bool = False,
                  complete_windows: bool = True,
+                 normalizer = None,
                  verbose: bool = False) -> 'TimeSeriesDataset':
         """
         Parameters
@@ -421,6 +423,7 @@ class TimeSeriesDataset(BaseDataset):
                                                 X_df=X_df, S_df=S_df, f_cols=f_cols,
                                                 mask_df=mask_df, ds_in_test=ds_in_test,
                                                 is_test=is_test, complete_windows=complete_windows,
+                                                normalizer=normalizer,
                                                 verbose=verbose)
 
 # Cell
@@ -484,6 +487,7 @@ class IterateWindowsDataset(BaseDataset):
                  mask_df: Optional[pd.DataFrame] = None,
                  ds_in_test: int = 0,
                  is_test: bool = False,
+                 normalizer = None,
                  verbose: bool = False) -> 'IterateWindowsDataset':
         """
         Parameters
@@ -519,6 +523,7 @@ class IterateWindowsDataset(BaseDataset):
                                                     X_df=X_df, S_df=S_df, f_cols=f_cols,
                                                     mask_df=mask_df, ds_in_test=ds_in_test,
                                                     is_test=is_test, complete_windows=True,
+                                                    normalizer=normalizer,
                                                     verbose=verbose)
 
         self.first_sampleable_stamps = np.nonzero(self.ts_tensor[0, self.t_cols.index('sample_mask'), :])[0,0]
@@ -600,6 +605,7 @@ class WindowsDataset(BaseDataset):
                  sample_freq: int = 1,
                  complete_windows: bool = False,
                  last_window: bool = False,
+                 normalizer = None,
                  verbose: bool = False) -> 'TimeSeriesDataset':
         """
         Parameters
@@ -638,6 +644,7 @@ class WindowsDataset(BaseDataset):
                                              X_df=X_df, S_df=S_df, f_cols=f_cols,
                                              mask_df=mask_df, ds_in_test=ds_in_test,
                                              is_test=is_test, complete_windows=complete_windows,
+                                             normalizer=normalizer,
                                              verbose=verbose)
         # WindowsDataset parameters
         self.windows_size = self.input_size + self.output_size
