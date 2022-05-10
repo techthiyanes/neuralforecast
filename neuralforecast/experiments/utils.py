@@ -724,8 +724,9 @@ def predict(mc: dict, model: pl.LightningModule,
     y_true = y_true.cpu().numpy()
     y_hat = y_hat.cpu().numpy()
     mask = mask.cpu().numpy()
+    ts_idxs = ts_idxs.cpu().numpy()
 
-    return y_true, y_hat, mask
+    return y_true, y_hat, mask, ts_idxs
 
 # Cell
 def fit(mc: dict, Y_df: pd.DataFrame, X_df: pd.DataFrame =None, S_df: pd.DataFrame =None,
@@ -851,14 +852,15 @@ def model_fit_predict(mc: dict,
     results = {}
 
     if ds_in_val > 0:
-        y_true, y_hat, mask = predict(mc, model, trainer, val_loader)
-        val_values = (('val_y_true', y_true), ('val_y_hat', y_hat), ('val_mask', mask))
+        y_true, y_hat, mask, ts_idxs = predict(mc, model, trainer, val_loader)
+        val_values = (('val_y_true', y_true), ('val_y_hat', y_hat),
+                      ('val_mask', mask), ('val_meta_data', ts_idxs))
         results.update(val_values)
 
     # Predict test if available
     if ds_in_test > 0:
-        y_true, y_hat, mask = predict(mc, model, trainer, test_loader)
-        test_values = (('test_y_true', y_true), ('test_y_hat', y_hat), ('test_mask', mask))
+        y_true, y_hat, mask, ts_idxs = predict(mc, model, trainer, test_loader)
+        test_values = (('test_y_true', y_true), ('test_y_hat', y_hat), ('test_mask', mask), ('test_meta_data', ts_idxs))
         results.update(test_values)
 
     return results, model, trainer
