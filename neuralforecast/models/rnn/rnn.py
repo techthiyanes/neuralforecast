@@ -8,6 +8,7 @@ import random
 import torch as t
 import torch.nn as nn
 from hyperopt import hp
+import torch.nn.functional as F
 
 from typing import Union, List
 from ..components.drnn import DRNN
@@ -15,11 +16,13 @@ from ..components.drnn import DRNN
 # Cell
 class _RNN(nn.Module):
     def __init__(self, input_size: int, output_size: int,
-                 n_t: int, n_s: int, cell_type: str, dilations: list, state_hsize: int, add_nl_layer: bool):
+                 n_t: int, n_s: int, cell_type: str, dilations: list, state_hsize: int, add_nl_layer: bool,
+                 n_freq_downsample: int):
         super(_RNN, self).__init__()
 
         self.input_size = input_size
-        self.output_size = output_size
+        self.forecast_size = output_size
+        self.output_size = max(output_size//n_freq_downsample, 1)
         self.n_t = n_t
         self.n_s = n_s
         self.cell_type = cell_type
@@ -68,6 +71,9 @@ class _RNN(nn.Module):
         input_data = self.adapterW(input_data)
         input_data = input_data.transpose(0,1) #change to bs, n_windows
 
+        # Interpolate
+        input_data = F.interpolate(input_data, size=self.forecast_size, mode='linear')
+
         return input_data
 
 # Cell
@@ -94,6 +100,7 @@ class RNN(pl.LightningModule):
                  cell_type: str = 'LSTM', state_hsize: int = 50,
                  dilations: List[List[int]] = [[1, 2], [4, 8]],
                  add_nl_layer: bool = False,
+                 n_freq_downsample: int = 1,
                  learning_rate: float = 1e-3, lr_scheduler_step_size: int = 1000,
                  lr_decay: float = 0.9,
                  gradient_eps: float = 1e-8,
@@ -175,6 +182,7 @@ class RNN(pl.LightningModule):
         self.state_hsize = state_hsize
         self.dilations = dilations
         self.add_nl_layer = add_nl_layer
+        self.n_freq_downsample = n_freq_downsample
 
         # Regularization and optimization parameters
         self.learning_rate = learning_rate
@@ -207,7 +215,8 @@ class RNN(pl.LightningModule):
                           cell_type=self.cell_type,
                           dilations=self.dilations,
                           state_hsize=self.state_hsize,
-                          add_nl_layer=self.add_nl_layer)
+                          add_nl_layer=self.add_nl_layer,
+                          n_freq_downsample=self.n_freq_downsample)
 
         self.automatic_optimization = False
 
