@@ -531,6 +531,7 @@ def instantiate_rnn(mc: dict) -> ESRNN:
                   state_hsize=int(mc['state_hsize']),
                   dilations=mc['dilations'],
                   add_nl_layer=mc['add_nl_layer'],
+                  n_pool_kernel_size=mc['n_pool_kernel_size'],
                   n_freq_downsample=mc['n_freq_downsample'],
                   # Optimization parameters
                   learning_rate=mc['learning_rate'],

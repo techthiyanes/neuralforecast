@@ -17,12 +17,18 @@ from ..components.drnn import DRNN
 class _RNN(nn.Module):
     def __init__(self, input_size: int, output_size: int,
                  n_t: int, n_s: int, cell_type: str, dilations: list, state_hsize: int, add_nl_layer: bool,
-                 n_freq_downsample: int):
+                 n_pool_kernel_size: int, n_freq_downsample: int):
         super(_RNN, self).__init__()
 
-        self.input_size = input_size
+        self.n_pool_kernel_size = n_pool_kernel_size
+        self.n_freq_downsample = n_freq_downsample
+
         self.forecast_size = output_size
+
+        # Pooling and interpolation
+        self.input_size = int(np.ceil(input_size/n_pool_kernel_size))
         self.output_size = max(output_size//n_freq_downsample, 1)
+
         self.n_t = n_t
         self.n_s = n_s
         self.cell_type = cell_type
@@ -30,6 +36,10 @@ class _RNN(nn.Module):
         self.state_hsize = state_hsize
         self.add_nl_layer = add_nl_layer
         self.layers = len(dilations)
+
+        if self.n_pool_kernel_size > 1:
+            self.pooling_layer = nn.MaxPool1d(kernel_size=self.n_pool_kernel_size,
+                                              stride=self.n_pool_kernel_size, ceil_mode=True)
 
         layers = []
         for grp_num in range(len(self.dilations)):
@@ -52,6 +62,11 @@ class _RNN(nn.Module):
         self.adapterW  = nn.Linear(self.state_hsize, self.output_size)
 
     def forward(self, Y: t.Tensor, X: t.Tensor):
+
+        # Pooling input
+        if self.n_pool_kernel_size > 1:
+            Y = self.pooling_layer(Y)
+
         if self.n_t >0:
             input_data = t.cat((Y, X), -1)
         else:
@@ -71,7 +86,7 @@ class _RNN(nn.Module):
         input_data = self.adapterW(input_data)
         input_data = input_data.transpose(0,1) #change to bs, n_windows
 
-        # Interpolate
+        # Interpolation
         input_data = F.interpolate(input_data, size=self.forecast_size, mode='linear')
 
         return input_data
@@ -100,6 +115,7 @@ class RNN(pl.LightningModule):
                  cell_type: str = 'LSTM', state_hsize: int = 50,
                  dilations: List[List[int]] = [[1, 2], [4, 8]],
                  add_nl_layer: bool = False,
+                 n_pool_kernel_size: int = 1,
                  n_freq_downsample: int = 1,
                  learning_rate: float = 1e-3, lr_scheduler_step_size: int = 1000,
                  lr_decay: float = 0.9,
@@ -182,6 +198,7 @@ class RNN(pl.LightningModule):
         self.state_hsize = state_hsize
         self.dilations = dilations
         self.add_nl_layer = add_nl_layer
+        self.n_pool_kernel_size = n_pool_kernel_size
         self.n_freq_downsample = n_freq_downsample
 
         # Regularization and optimization parameters
@@ -216,6 +233,7 @@ class RNN(pl.LightningModule):
                           dilations=self.dilations,
                           state_hsize=self.state_hsize,
                           add_nl_layer=self.add_nl_layer,
+                          n_pool_kernel_size=n_pool_kernel_size,
                           n_freq_downsample=self.n_freq_downsample)
 
         self.automatic_optimization = False
